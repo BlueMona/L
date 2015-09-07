@@ -54,6 +54,7 @@ Ongoing benchmarks do not consume any CPU resource.
 ## Example gulp task for wiping logging code out
 
 To remove logging code from production builds do the following:
+
 1. Do not forget to remove L.js library itself from the build.
 2. Install `npm install --save-dev gulp-replace` or similar regex replacing library
 3. Use regexp filters: `/^\s*[LT]\s*\(.*$/gm` `/^\s*B\s*\.\s*(start|stop)\s*\(.*$/gm` `/^\s*T\s*\..*$/gm`
