@@ -1,0 +1,19 @@
+{
+  "name": "l.js",
+  "version": "1.0.0",
+  "description": "Unobtrusive yet powerful logging library originally made for Peerio apps",
+  "main": "L.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PeerioTechnologies/L.git"
+  },
+  "author": "Anri Asaturov",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/PeerioTechnologies/L/issues"
+  },
+  "homepage": "https://github.com/PeerioTechnologies/L#readme"
+}
