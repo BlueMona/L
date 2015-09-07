@@ -47,12 +47,14 @@
   self.T.enabled = true;
 
   var runningBenchmarks = {};
+  var time = self.performance || self.Date;
+
   self.B = {};
   self.B.start = function (id, msg) {
     if (runningBenchmarks.hasOwnProperty(id)) throw 'Duplicate benchmark id';
 
     runningBenchmarks[id] = {
-      ts: Date.now(),
+      ts: time.now(),
       msg: msg
     };
   };
@@ -60,7 +62,7 @@
   self.B.stop = function (id) {
     if (!runningBenchmarks.hasOwnProperty(id)) throw 'Benchmark id not found';
     var b = runningBenchmarks[id];
-    self.L('{0} | {1} ms.', b.msg, Date.now() - b.ts);
+    self.L('{0} | {1} ms.', b.msg, time.now() - b.ts);
   };
 
   /**
@@ -87,9 +89,10 @@
    *  @returns {string} interpolated string
    */
   function interpolate(str, args) {
-    if (typeof str === 'function')
-      str = str();
+    if (typeof str === 'function') str = str();
+
     if (!args || !args.length) return str;
+
     return str.replace(/{([^{}]*)}/g,
       function (a, b) {
         return args[b];
