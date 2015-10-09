@@ -1,7 +1,7 @@
 /**
  *  L.js
  *  ---------------------
- *  Unobtrusive yet powerful debug logging library originally made for Peerio apps (http://peerio.com).
+ *  Opinionated, unobtrusive yet powerful logging library originally made for Peerio apps (http://peerio.com).
  *
  *  Features:
  *  - string interpolation: log message can contain repeatable placeholders `{0}{1}{2}{1}`
@@ -15,66 +15,78 @@
  */
 
 
-(function (self) {
+(function (root) {
   'use strict';
+  var l = root.L = {};
 
-  /**
-   *  LOG
-   *  Use this for regular log messages.
-   *  This function supports interpolation: `L("abc{0}{1}{2}",'d','f','g') => "abcdefg"`
-   *  @param {string | function} msg - string or function returning string
-   */
-  self.L = function (msg) {
-    console.log(interpolate(msg, getArguments(arguments)));
-  };
+  // time function to use for benchmarks
+  var time = root.performance || root.Date;
+  // log message levels
+  l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
+  var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
+  // by default benchmarks timeout after this number of seconds
+  l.benchmarkTimeout = 120;
+  // current log level
+  l.level = l.LEVELS.VERBOSE;
+  // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
+  l.cacheLimit = 1000;
+  l.cache = [];
 
-  /**
-   *  TRACE
-   *  Use this for high frequency log messages.
-   *  Set `T.enabled = false` to disable output when it affects performance or clutters output.
-   *  This function supports interpolation: `T("abc{0}{1}{2}",'d','f','g') => "abcdefg"`
-   *  @param {string | function} msg - string or function returning string
-   */
-  self.T = function (msg) {
-    if (!T.enabled) return;
-    console.log(interpolate(msg, getArguments(arguments)));
-  };
+  // todo remove console writer from release
+  var writers = [console.log.bind(console), addToCache];
 
-  /**
-   * Enables and disables trace messages
-   * @type {boolean}
-   */
-  self.T.enabled = true;
+  function log(level, msg) {
+    if (level > l.level || writers.length === 0) return;
+    var entry = interpolate('{0} {1}: ', [(new Date()).toJSON(), levelNames[level]]) + interpolate(msg, getArguments(arguments));
+    for (var i = 0; i < writers.length; i++)
+      writers[i](entry);
+  }
 
+  l.error = function () {};
+  //-- Benchmarks ------------------------------------------------------------------------------------------------------
+  // benchmarks in progress
   var runningBenchmarks = {};
-  var time = self.performance || self.Date;
 
-  self.B = {};
-  self.B.start = function (id, msg) {
-    if (runningBenchmarks.hasOwnProperty(id)) throw 'Duplicate benchmark id';
+  l.B = {};
+  l.B.enabled = true;
 
-    runningBenchmarks[id] = {
+  l.B.start = function (name, msg, timeout) {
+    if (!l.B.enabled) return;
+    if (runningBenchmarks.hasOwnProperty(name)) throw 'Duplicate benchmark name';
+
+    runningBenchmarks[name] = {
       ts: time.now(),
-      msg: msg
+      msg: msg,
+      timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
     };
   };
 
-  self.B.stop = function (id) {
-    if (!runningBenchmarks.hasOwnProperty(id)) throw 'Benchmark id not found';
-    var b = runningBenchmarks[id];
-    self.L('{0} | {1} ms.', b.msg, time.now() - b.ts);
+  l.B.stop = function (name, timeout) {
+    if (!runningBenchmarks.hasOwnProperty(name)) return;
+    var b = runningBenchmarks[name];
+    delete runningBenchmarks[name];
+    l.info('{0}: {1} | {2} ms.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time.now() - b.ts);
+    root.clearTimeout(b.timeoutId);
   };
+
+  //-- Utilities -------------------------------------------------------------------------------------------------------
+  function addToCache(msg) {
+    if (l.cache.length >= l.cacheLimit)
+      l.cache.splice(0, 1, msg);
+    else
+      l.cache.push(msg);
+  }
 
   /**
    * Extracts meaningful arguments from arguments object
    * @param args
    */
   function getArguments(args) {
-    if (args.length <= 1) return null;
+    if (args.length <= 2) return null;
 
     // splice on arguments prevents js optimisation, so we do it a bit longer way
     var arg = [];
-    for (var i = 1; i < args.length; i++)
+    for (var i = 2; i < args.length; i++)
       arg.push(args[i]);
 
     return arg;
