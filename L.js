@@ -11,7 +11,7 @@
  *  - Benchmarking
  *  - Logging code and calls can be completely wiped out in production builds with regex replace.
  *
- *  Anri Asaturov | 2015
+ *  / Peerio / Anri Asaturov / 2015 /
  */
 
 
@@ -19,33 +19,62 @@
   'use strict';
   var l = root.L = {};
 
+  //-- constants
   // time function to use for benchmarks
   var time = root.performance || root.Date;
   // log message levels
   l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
   var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
+  var originalConsole;
+  //-- settings
   // by default benchmarks timeout after this number of seconds
   l.benchmarkTimeout = 120;
   // current log level
   l.level = l.LEVELS.VERBOSE;
   // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
   l.cacheLimit = 1000;
+
+  // cached log entries
   l.cache = [];
+
+  // benchmarks in progress
+  var runningBenchmarks = {};
 
   // todo remove console writer from release
   var writers = [console.log.bind(console), addToCache];
 
-  function log(level, msg) {
-    if (level > l.level || writers.length === 0) return;
-    var entry = interpolate('{0} {1}: ', [(new Date()).toJSON(), levelNames[level]]) + interpolate(msg, getArguments(arguments));
-    for (var i = 0; i < writers.length; i++)
-      writers[i](entry);
-  }
+  l.error = log.bind(l, l.LEVELS.ERROR);
+  l.info = log.bind(l, l.LEVELS.INFO);
+  l.verbose = log.bind(l, l.LEVELS.VERBOSE);
+  l.silly = log.bind(l, l.LEVELS.SILLY);
 
-  l.error = function () {};
+  l.captureConsole = function () {
+    if (originalConsole) return;
+    originalConsole = {
+      log: root.console.log,
+      error: root.console.error,
+      warn: root.console.warn
+    };
+
+    root.console.log = root.console.warn = function () {
+      for (var i = 1; i < arguments.length; i++)
+        l.info(arguments[i]);
+    };
+    root.console.error = function () {
+      for (var i = 1; i < arguments.length; i++)
+        l.error(arguments[i]);
+    };
+  };
+
+  l.releaseConsole = function () {
+    if(!originalConsole) return;
+    root.console.log = originalConsole.log;
+    root.console.error = originalConsole.error;
+    root.console.warn = originalConsole.warn;
+    originalConsole = null;
+  };
+
   //-- Benchmarks ------------------------------------------------------------------------------------------------------
-  // benchmarks in progress
-  var runningBenchmarks = {};
 
   l.B = {};
   l.B.enabled = true;
@@ -69,7 +98,16 @@
     root.clearTimeout(b.timeoutId);
   };
 
-  //-- Utilities -------------------------------------------------------------------------------------------------------
+  //-- Private -------------------------------------------------------------------------------------------------------
+
+  function log(level, msg) {
+    if (level > l.level || writers.length === 0) return;
+    var entry = interpolate('{0} {1}: ', [(new Date()).toJSON(), levelNames[level]]) + interpolate(msg, getArguments(arguments));
+    for (var i = 0; i < writers.length; i++)
+      writers[i](entry);
+  }
+
+  // cache writer
   function addToCache(msg) {
     if (l.cache.length >= l.cacheLimit)
       l.cache.splice(0, 1, msg);
