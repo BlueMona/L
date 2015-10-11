@@ -15,5 +15,6 @@
   "bugs": {
     "url": "https://github.com/PeerioTechnologies/L/issues"
   },
-  "homepage": "https://github.com/PeerioTechnologies/L#readme"
+  "homepage": "https://github.com/PeerioTechnologies/L#readme",
+  "devDependencies": {}
 }

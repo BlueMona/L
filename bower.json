@@ -8,5 +8,7 @@
   ],
   "description": "",
   "moduleType": [],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+  }
 }

@@ -20,8 +20,6 @@
   var l = root.L = {};
 
   //-- constants
-  // time function to use for benchmarks
-  var time = root.performance || root.Date;
   // log message levels
   l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
   var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
@@ -57,11 +55,11 @@
     };
 
     root.console.log = root.console.warn = function () {
-      for (var i = 1; i < arguments.length; i++)
+      for (var i = 0; i < arguments.length; i++)
         l.info(arguments[i]);
     };
     root.console.error = function () {
-      for (var i = 1; i < arguments.length; i++)
+      for (var i = 0; i < arguments.length; i++)
         l.error(arguments[i]);
     };
   };
@@ -84,7 +82,7 @@
     if (runningBenchmarks.hasOwnProperty(name)) throw 'Duplicate benchmark name';
 
     runningBenchmarks[name] = {
-      ts: time.now(),
+      ts: Date.now(),
       msg: msg,
       timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
     };
@@ -93,8 +91,9 @@
   l.B.stop = function (name, timeout) {
     if (!runningBenchmarks.hasOwnProperty(name)) return;
     var b = runningBenchmarks[name];
+    var time = Date.now() - b.ts;
     delete runningBenchmarks[name];
-    l.info('{0}: {1} | {2} ms.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time.now() - b.ts);
+    l.info('{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time/1000);
     root.clearTimeout(b.timeoutId);
   };
 
@@ -109,10 +108,10 @@
 
   // cache writer
   function addToCache(msg) {
-    if (l.cache.length >= l.cacheLimit)
-      l.cache.splice(0, 1, msg);
-    else
-      l.cache.push(msg);
+    l.cache.unshift(msg);
+
+    if (l.cache.length > l.cacheLimit)
+      l.cache.length = l.cacheLimit;
   }
 
   /**
