@@ -41,6 +41,10 @@ L.silly(function(){ return 2+2*2; }) => '6'
 
 ```
 
+### L.captureConsole(), L.releaseConsole()
+
+Overrides `console.log`, `console.error` and `console.warn` implementations to treat calls as `L.info` and `L.error`
+
 ### B - benchmark
 `B` provides simple benchmark logs with following syntax:
 
@@ -52,6 +56,9 @@ B.start('login', 'Login time:');
 
 // this call stops benchmark with specified id and outputs benchmark message with time passed in milliseconds
 B.stop('login');
+
+// sample output:
+// 2015-10-11T22:33:16.082Z INF: default timeout success: benchmark | 0.008 s.
 
 // if benchmark times out, it will be stopped and timeout fact logged automatically.
 ```
