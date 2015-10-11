@@ -4,11 +4,9 @@
  *  Opinionated, unobtrusive yet powerful logging library originally made for Peerio apps (http://peerio.com).
  *
  *  Features:
- *  - string interpolation: log message can contain repeatable placeholders `{0}{1}{2}{1}`
- *  - 2 logging modes
- *    - Regular logging
- *    - High frequency/heavy log mode that can be enabled or disabled
+ *  - Logging
  *  - Benchmarking
+ *  - String interpolation: log message may contain repeatable placeholders `{0}{1}{2}{1}`
  *  - Logging code and calls can be completely wiped out in production builds with regex replace.
  *
  *  / Peerio / Anri Asaturov / 2015 /
@@ -47,29 +45,37 @@
   l.silly = log.bind(l, l.LEVELS.SILLY);
 
   l.captureConsole = function () {
-    if (originalConsole) return;
-    originalConsole = {
-      log: root.console.log,
-      error: root.console.error,
-      warn: root.console.warn
-    };
+    try {
+      if (originalConsole) return;
+      originalConsole = {
+        log: root.console.log,
+        error: root.console.error,
+        warn: root.console.warn
+      };
 
-    root.console.log = root.console.warn = function () {
-      for (var i = 0; i < arguments.length; i++)
-        l.info(arguments[i]);
-    };
-    root.console.error = function () {
-      for (var i = 0; i < arguments.length; i++)
-        l.error(arguments[i]);
-    };
+      root.console.log = root.console.warn = function () {
+        for (var i = 0; i < arguments.length; i++)
+          l.info(arguments[i]);
+      };
+      root.console.error = function () {
+        for (var i = 0; i < arguments.length; i++)
+          l.error(arguments[i]);
+      };
+    } catch (e) {
+      l.error(e);
+    }
   };
 
   l.releaseConsole = function () {
-    if(!originalConsole) return;
-    root.console.log = originalConsole.log;
-    root.console.error = originalConsole.error;
-    root.console.warn = originalConsole.warn;
-    originalConsole = null;
+    try {
+      if (!originalConsole) return;
+      root.console.log = originalConsole.log;
+      root.console.error = originalConsole.error;
+      root.console.warn = originalConsole.warn;
+      originalConsole = null;
+    } catch (e) {
+      l.error(e);
+    }
   };
 
   //-- Benchmarks ------------------------------------------------------------------------------------------------------
@@ -78,32 +84,57 @@
   l.B.enabled = true;
 
   l.B.start = function (name, msg, timeout) {
-    if (!l.B.enabled) return;
-    if (runningBenchmarks.hasOwnProperty(name)) throw 'Duplicate benchmark name';
+    try {
+      if (!l.B.enabled) return;
 
-    runningBenchmarks[name] = {
-      ts: Date.now(),
-      msg: msg,
-      timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
-    };
+      if (runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Duplicate benchmark name');
+        return;
+      }
+
+      runningBenchmarks[name] = {
+        ts: Date.now(),
+        msg: msg,
+        timeoutId: root.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
+      };
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
+    }
   };
 
   l.B.stop = function (name, timeout) {
-    if (!runningBenchmarks.hasOwnProperty(name)) return;
-    var b = runningBenchmarks[name];
-    var time = Date.now() - b.ts;
-    delete runningBenchmarks[name];
-    l.info('{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time/1000);
-    root.clearTimeout(b.timeoutId);
+    try {
+      if (!runningBenchmarks.hasOwnProperty(name)) {
+        l.error('Benchmark name {0} not found', name);
+        return;
+      }
+      var b = runningBenchmarks[name];
+      var time = Date.now() - b.ts;
+      delete runningBenchmarks[name];
+      l.info('{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time / 1000);
+      root.clearTimeout(b.timeoutId);
+    } catch (e) {
+      l.error(e);
+      // yes, we are not interested in handling exception
+    }
   };
 
   //-- Private -------------------------------------------------------------------------------------------------------
 
   function log(level, msg) {
-    if (level > l.level || writers.length === 0) return;
-    var entry = interpolate('{0} {1}: ', [(new Date()).toJSON(), levelNames[level]]) + interpolate(msg, getArguments(arguments));
-    for (var i = 0; i < writers.length; i++)
-      writers[i](entry);
+    try {
+      if (level > l.level || writers.length === 0) return;
+      if (typeof(msg) === 'function') msg = msg();
+      var entry = interpolate('{0} {1}: ', [(new Date()).toJSON(), levelNames[level]]) + interpolate(msg, getArguments(arguments));
+      for (var i = 0; i < writers.length; i++)
+        writers[i](entry);
+    } catch (e) {
+      // silently swallowing exception is a bad practice, BUT
+      // 1. we don't want a fault in our logging code to break application
+      // 2. we don't want to send our app into infinite loop/stack overflow by logging this exception (even with console.log)
+      // todo: maybe make this optional
+    }
   }
 
   // cache writer
