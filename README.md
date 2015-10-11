@@ -72,21 +72,19 @@ To remove logging code from production builds do the following:
 
 1. Do not forget to remove L.js library itself from the build.
 2. Install `npm install --save-dev gulp-replace` or similar regex replacing library
-3. Use regexp filters: `/^\s*[LT]\s*\(.*$/gm` `/^\s*B\s*\.\s*(start|stop)\s*\(.*$/gm` `/^\s*T\s*\..*$/gm`
+3. Use regexp filters: `/^\s*L\..*$/gm`
 WARNING: ONLY SINGLE-LINE CALLS CURRENTLY SUPPORTED!
 
 `gulp-replace` task example
 ```javascript
 gulp.task('strip-logs', function(){
   gulp.src(['file.js'])
-    .pipe(replace(/^\s*[LT]\s*\(.*$/gm, ''))
-    .pipe(replace(/^\s*B\s*\.\s*(start|stop)\s*\(.*$/gm, ''))
-    .pipe(replace(/^\s*T\s*\..*$/gm, ''))
+    .pipe(replace(/^\s*L\..*$/gm, ''))
     .pipe(gulp.dest('build/file.js'));
 });
 ```
 
 ## TODO
-* better logging code removal (support multi-line functions)
+* better logging code removal (support multi-line calls)
 * specs for evaluating logs
 * specs for logging code removal
