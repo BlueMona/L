@@ -54,12 +54,10 @@
       };
 
       root.console.log = root.console.warn = function () {
-        for (var i = 0; i < arguments.length; i++)
-          l.info(arguments[i]);
+        l.info(Array.prototype.join.call(arguments, ' '));
       };
       root.console.error = function () {
-        for (var i = 0; i < arguments.length; i++)
-          l.error(arguments[i]);
+        l.error(Array.prototype.join.call(arguments, ' '));
       };
     } catch (e) {
       l.error(e);
@@ -126,14 +124,16 @@
     try {
       if (level > l.level || writers.length === 0) return;
       if (typeof(msg) === 'function') msg = msg();
-      var entry = interpolate('{0} {1}: ', [(new Date()).toJSON(), levelNames[level]]) + interpolate(msg, getArguments(arguments));
+      msg = stringify(msg);
+      var entry = interpolate('{0} {1}: ', [(new Date()), levelNames[level]]) + interpolate(msg, getArguments(arguments));
       for (var i = 0; i < writers.length; i++)
         writers[i](entry);
     } catch (e) {
-      // silently swallowing exception is a bad practice, BUT
-      // 1. we don't want a fault in our logging code to break application
-      // 2. we don't want to send our app into infinite loop/stack overflow by logging this exception (even with console.log)
-      // todo: maybe make this optional
+      try {
+        l.error(e);
+      } catch (e) {
+        // well.. we tried
+      }
     }
   }
 
@@ -162,22 +162,33 @@
 
   /**
    *  Interpolates string replacing placeholders with arguments
-   *  @param {string | function} str - template string with placeholders in format {0} {1} {2}
+   *  @param {string} str - template string with placeholders in format {0} {1} {2}
    *                                   where number is argument array index.
    *                                   Numbers also can be replaced with property names or argument object.
    *  @param {Array | Object} args - argument array or object
    *  @returns {string} interpolated string
    */
   function interpolate(str, args) {
-    if (typeof str === 'function') str = str();
-
     if (!args || !args.length) return str;
 
     return str.replace(/{([^{}]*)}/g,
       function (a, b) {
-        return args[b];
+        return stringify(args[b]);
       }
     );
+  }
+
+  // Opinionated any-value to string converter
+  function stringify(val) {
+    if (typeof(val) === 'string') return val;
+
+    if (val instanceof Error)
+      return val.message + ' ' + val.stack;
+
+    if (val instanceof Date)
+      return val.toISOString();
+
+    return JSON.stringify(val);
   }
 
 }(this));
