@@ -117,11 +117,12 @@
     }
   };
 
-  l.switchToWorkerMode = function () {
+  l.switchToWorkerMode = function (workerName) {
     l.captureConsole();
     l.captureRootErrors();
+    l.workerName = workerName;
     l.cacheLimit = 0;
-    l.writers = [postToUIThread];
+    writers = [postToUIThread];
   };
 
   /**
@@ -181,11 +182,20 @@
 
   function log(level, msg) {
     try {
+
       if (level > l.level || writers.length === 0) return;
       if (typeof(msg) === 'function') msg = msg();
+
       msg = stringify(msg);
-      var entry = interpolate('{0} {1}: ', [(new Date()), levelNames[level]]) + interpolate(msg, getArguments(arguments));
+
+      var head =
+        l.workerName
+          ? interpolate('{0} {1}:{2} ', [getTimestamp(), levelNames[level], l.workerName])
+          : interpolate('{0} {1}: ', [getTimestamp(), levelNames[level]]);
+
+      var entry = head + interpolate(msg, getArguments(arguments));
       l.rawWrite(entry);
+
     } catch (e) {
       try {
         l.error(e);
@@ -252,6 +262,25 @@
       return val.toISOString();
 
     return JSON.stringify(val);
+  }
+
+  function getTimestamp() {
+    var d = new Date();
+    return pad(d.getDate())
+      + '.' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds())
+      + '.' + pad2(d.getMilliseconds());
+  }
+
+  // performance over fanciness
+  function pad(n) {
+    var ret = n.toString();
+    return ret.length === 2 ? ret : ('0' + ret);
+  }
+
+  // performance over fanciness
+  function pad2(n) {
+    var ret = n.toString();
+    return ret.length === 3 ? ret : ( ret.length === 2 ? ('0' + ret) : ('00' + ret));
   }
 
 }(this));
