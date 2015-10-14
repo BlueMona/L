@@ -21,15 +21,16 @@
   // log message levels
   l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
   var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
-  var originalConsole;
+  var originalConsole, originalOnError, onErrorIsCaptured = false;
   //-- settings
-  // by default benchmarks timeout after this number of seconds
-  l.benchmarkTimeout = 120;
   // current log level
   l.level = l.LEVELS.VERBOSE;
   // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
   l.cacheLimit = 1000;
 
+  l.benchmarkEnabled = true;
+  // by default benchmarks timeout after this number of seconds
+  l.benchmarkTimeout = 120;
   // cached log entries
   l.cache = [];
 
@@ -44,9 +45,25 @@
   l.verbose = log.bind(l, l.LEVELS.VERBOSE);
   l.silly = log.bind(l, l.LEVELS.SILLY);
 
+  /**
+   * Writes message without any pre-processing
+   * This is useful when writing pre-processed messages received from web worker
+   * @param msg
+   */
+  l.rawWrite = function (msg) {
+    for (var i = 0; i < writers.length; i++)
+      writers[i](msg);
+  };
+  /**
+   * Overrides console.log, console.error and console.warn.
+   * Reroutes overridden calls to self.
+   */
   l.captureConsole = function () {
     try {
       if (originalConsole) return;
+
+      if (!root.console) root.console = {};
+
       originalConsole = {
         log: root.console.log,
         error: root.console.error,
@@ -64,6 +81,9 @@
     }
   };
 
+  /**
+   * Brings back console functions to the state they were before capturing
+   */
   l.releaseConsole = function () {
     try {
       if (!originalConsole) return;
@@ -76,14 +96,53 @@
     }
   };
 
+  l.captureRootErrors = function () {
+    try {
+      if (onErrorIsCaptured) return;
+      onErrorIsCaptured = true;
+      originalOnError = root.onerror;
+      root.onerror = l.error;
+    } catch (e) {
+      l.error(e);
+    }
+  };
+
+  l.releaseRootErrors = function () {
+    try {
+      if (!onErrorIsCaptured) return;
+      onErrorIsCaptured = false;
+      root.onerror = originalOnError;
+    } catch (e) {
+      l.error(e);
+    }
+  };
+
+  l.switchToWorkerMode = function () {
+    l.captureConsole();
+    l.captureRootErrors();
+    l.cacheLimit = 0;
+    l.writers = [postToUIThread];
+  };
+
+  /**
+   * Updates L.js options with values provided in config object.
+   * This function is supposed to be used when running in web worker,
+   * so it ignores irrelevant options
+   * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
+   */
+  l.setOptions = function (options) {
+    if (options.level) l.level = options.level;
+    if (options.benchmarkEnabled) l.level = options.benchmarkEnabled;
+    if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
+  };
+
   //-- Benchmarks ------------------------------------------------------------------------------------------------------
 
   l.B = {};
-  l.B.enabled = true;
 
   l.B.start = function (name, msg, timeout) {
     try {
-      if (!l.B.enabled) return;
+      if (!l.benchmarkEnabled) return;
 
       if (runningBenchmarks.hasOwnProperty(name)) {
         l.error('Duplicate benchmark name');
@@ -126,8 +185,7 @@
       if (typeof(msg) === 'function') msg = msg();
       msg = stringify(msg);
       var entry = interpolate('{0} {1}: ', [(new Date()), levelNames[level]]) + interpolate(msg, getArguments(arguments));
-      for (var i = 0; i < writers.length; i++)
-        writers[i](entry);
+      l.rawWrite(entry);
     } catch (e) {
       try {
         l.error(e);
@@ -143,6 +201,11 @@
 
     if (l.cache.length > l.cacheLimit)
       l.cache.length = l.cacheLimit;
+  }
+
+  // worker mode writer
+  function postToUIThread(msg) {
+    root.postMessage({ljsMessage: msg});
   }
 
   /**
