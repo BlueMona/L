@@ -21,6 +21,7 @@
   // log message levels
   l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
   var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
+  levelNames['-1'] = 'BNC';
   var originalConsole, originalOnError, onErrorIsCaptured = false;
   //-- settings
   // current log level
@@ -33,7 +34,8 @@
   l.benchmarkTimeout = 120;
   // cached log entries
   l.cache = [];
-
+  // registered web workers
+  var workers = [];
   // benchmarks in progress
   var runningBenchmarks = {};
 
@@ -137,6 +139,23 @@
     if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
   };
 
+  l.setWorkersOptions = function (options) {
+    workers.forEach(function (w) {
+      w.postMessage(options);
+    });
+  };
+
+  l.addWorker = function (worker) {
+    if (workers.indexOf(worker) >= 0) return;
+    workers.push(worker);
+  };
+
+  l.removeWorker = function (worker) {
+    var ind = workers.indexOf(worker);
+    if (ind < 0) return;
+    workers.splice(ind, 1);
+  };
+
   //-- Benchmarks ------------------------------------------------------------------------------------------------------
 
   l.B = {};
@@ -170,7 +189,7 @@
       var b = runningBenchmarks[name];
       var time = Date.now() - b.ts;
       delete runningBenchmarks[name];
-      l.info('{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time / 1000);
+      log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time / 1000);
       root.clearTimeout(b.timeoutId);
     } catch (e) {
       l.error(e);
