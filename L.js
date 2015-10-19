@@ -25,7 +25,7 @@
   var originalConsole, originalOnError, onErrorIsCaptured = false;
   //-- settings
   // current log level
-  l.level = l.LEVELS.VERBOSE;
+  l.level = l.LEVELS.INFO;
   // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
   l.cacheLimit = 1000;
 
@@ -40,7 +40,7 @@
   var runningBenchmarks = {};
 
   // todo remove console writer from release
-  var writers = [console.log.bind(console), addToCache];
+  var writers = [consoleWriter, addToCache];
 
   l.error = log.bind(l, l.LEVELS.ERROR);
   l.info = log.bind(l, l.LEVELS.INFO);
@@ -51,10 +51,11 @@
    * Writes message without any pre-processing
    * This is useful when writing pre-processed messages received from web worker
    * @param msg
+   * @param [level]
    */
-  l.rawWrite = function (msg) {
+  l.rawWrite = function (msg, level) {
     for (var i = 0; i < writers.length; i++)
-      writers[i](msg);
+      writers[i](msg, level);
   };
   /**
    * Overrides console.log, console.error and console.warn.
@@ -73,10 +74,12 @@
       };
 
       root.console.log = root.console.warn = function () {
-        l.info(Array.prototype.join.call(arguments, ' '));
+        for (var i = 0; i < arguments.length; i++)
+          l.info(arguments[i]);
       };
       root.console.error = function () {
-        l.error(Array.prototype.join.call(arguments, ' '));
+        for (var i = 0; i < arguments.length; i++)
+          l.error(arguments[i]);
       };
     } catch (e) {
       l.error(e);
@@ -97,6 +100,20 @@
       l.error(e);
     }
   };
+
+  function consoleWriter(msg, level) {
+    if (originalConsole) {
+      if (level === l.LEVELS.ERROR)
+        originalConsole.error.call(root.console, msg);
+      else
+        originalConsole.log.call(root.console, msg);
+    } else {
+      if (level === l.LEVELS.ERROR)
+        root.console.error(msg);
+      else
+        root.console.log(msg);
+    }
+  }
 
   l.captureRootErrors = function () {
     try {
@@ -189,7 +206,7 @@
       var b = runningBenchmarks[name];
       var time = Date.now() - b.ts;
       delete runningBenchmarks[name];
-      log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg, time / 1000);
+      log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg || '', time / 1000);
       root.clearTimeout(b.timeoutId);
     } catch (e) {
       l.error(e);
@@ -213,7 +230,7 @@
           : interpolate('{0} {1}: ', [getTimestamp(), levelNames[level]]);
 
       var entry = head + interpolate(msg, getArguments(arguments));
-      l.rawWrite(entry);
+      l.rawWrite(entry, level);
 
     } catch (e) {
       try {
@@ -233,8 +250,8 @@
   }
 
   // worker mode writer
-  function postToUIThread(msg) {
-    root.postMessage({ljsMessage: msg});
+  function postToUIThread(msg, level) {
+    root.postMessage({ljsMessage: msg, level: level});
   }
 
   /**
@@ -286,8 +303,8 @@
   function getTimestamp() {
     var d = new Date();
     return pad(d.getDate())
-      + '.' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds())
-      + '.' + pad2(d.getMilliseconds());
+      + '.' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds())
+      + '.' + pad2(d.getUTCMilliseconds());
   }
 
   // performance over fanciness
