@@ -304,7 +304,7 @@
     function getTimestamp() {
         var d = new Date();
         return pad(d.getDate())
-            + '.' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds())
+            + '-' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds())
             + '.' + pad2(d.getUTCMilliseconds());
     }
 
