@@ -1,0 +1,21 @@
+# The original .editorconfig is located in eslint-config-peerio repository.
+# With every change here we need to update other repositories.
+#
+# There is no conventional way to automatically sync it at the moment,
+# but we could do it via githooks at some point.
+
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{css,scss,json}]
+indent_size = 2

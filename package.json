@@ -2,9 +2,24 @@
   "name": "l.js",
   "version": "1.0.0",
   "description": "Unobtrusive yet powerful logging library originally made for Peerio apps",
-  "main": "L.js",
+  "main": "build/L.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "npm run test -- -w",
+    "test": "mocha test/*.test.js --require test/global-setup --compilers js:babel-core/register --recursive",
+    "build": "babel src --out-dir build",
+    "clean": "rm -rf build",
+    "lint": "eslint src test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "babel-cli": "6.24.1",
+    "babel-eslint": "7.2.3",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-0": "^6.24.1",
+    "chai": "3.5.0",
+    "eslint": "3.19.0",
+    "eslint-config-peerio": "*",
+    "mocha": "3.3.0"
   },
   "repository": {
     "type": "git",
@@ -15,6 +30,5 @@
   "bugs": {
     "url": "https://github.com/PeerioTechnologies/L/issues"
   },
-  "homepage": "https://github.com/PeerioTechnologies/L#readme",
-  "devDependencies": {}
+  "homepage": "https://github.com/PeerioTechnologies/L#readme"
 }
