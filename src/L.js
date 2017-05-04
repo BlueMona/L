@@ -15,31 +15,33 @@
 
 'use strict';
 const l = {};
+const levels = require('./lib/levels');
+const CacheTransport = require('./lib/cache');
+const ConsoleTransport = require('./lib/console');
 
-//-- constants
-// log message levels
-l.LEVELS = {ERROR: 0, INFO: 1, VERBOSE: 2, SILLY: 3};
-var levelNames = ['ERR', 'INF', 'VER', 'SIL'];
+const levelNames = levels.names;
 levelNames['-1'] = 'BNC';
+
+// registered web workers
+const workers = [];
+// benchmarks in progress
+const runningBenchmarks = {};
+
+// export
+l.Transport = require('./lib/transport');
+l.LEVELS = levels.numeric;
+
 var originalConsole, originalOnError, onErrorIsCaptured = false;
-//-- settings
+
+// -- default settings
 // current log level
 l.level = l.LEVELS.INFO;
-// amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
-l.cacheLimit = 1000;
-
+// use benchmarks
 l.benchmarkEnabled = true;
 // by default benchmarks timeout after this number of seconds
 l.benchmarkTimeout = 120;
-// cached log entries
-l.cache = [];
-// registered web workers
-var workers = [];
-// benchmarks in progress
-var runningBenchmarks = {};
-
-// todo remove console writer from release
-var writers = [consoleWriter, addToCache];
+// default writers
+l.writers = { 'console': new ConsoleTransport(), 'cache': new CacheTransport() };
 
 l.error = log.bind(l, l.LEVELS.ERROR);
 l.info = log.bind(l, l.LEVELS.INFO);
@@ -53,67 +55,11 @@ l.silly = log.bind(l, l.LEVELS.SILLY);
  * @param [level]
  */
 l.rawWrite = function (msg, level) {
-    for (var i = 0; i < writers.length; i++)
-        writers[i](msg, level);
+    Object.keys(l.writers).forEach((k) => {
+        console.log('write to ', k)
+        l.writers[k].write(msg, level)
+    })    
 };
-// /**
-//  * Overrides console.log, console.error and console.warn.
-//  * Reroutes overridden calls to self.
-//  */
-// l.captureConsole = function () {
-//     try {
-//         if (originalConsole) return;
-
-//         if (!global.console) global.console = {};
-
-//         originalConsole = {
-//             log: global.console.log,
-//             error: global.console.error,
-//             warn: global.console.warn
-//         };
-
-//         global.console.log = global.console.warn = function () {
-//             for (var i = 0; i < arguments.length; i++)
-//                 l.info(arguments[i]);
-//         };
-//         global.console.error = function () {
-//             for (var i = 0; i < arguments.length; i++)
-//                 l.error(arguments[i]);
-//         };
-//     } catch (e) {
-//         l.error(e);
-//     }
-// };
-
-// /**
-//  * Brings back console functions to the state they were before capturing
-//  */
-// l.releaseConsole = function () {
-//     try {
-//         if (!originalConsole) return;
-//         global.console.log = originalConsole.log;
-//         global.console.error = originalConsole.error;
-//         global.console.warn = originalConsole.warn;
-//         originalConsole = null;
-//     } catch (e) {
-//         l.error(e);
-//     }
-// };
-
-function consoleWriter(msg, level) {
-    if (msg == null) msg = 'null';
-    if (originalConsole) {
-        if (level === l.LEVELS.ERROR)
-            originalConsole.error.call(global.console, msg);
-        else
-            originalConsole.log.call(global.console, msg);
-    } else {
-        if (level === l.LEVELS.ERROR)
-            global.console.error(msg);
-        else
-            global.console.log(msg);
-    }
-}
 
 l.captureglobalErrors = function () {
     try {
@@ -141,7 +87,7 @@ l.switchToWorkerMode = function (workerName) {
     l.captureglobalErrors();
     l.workerName = workerName;
     l.cacheLimit = 0;
-    writers = [postToUIThread];
+    l.writers = [postToUIThread];
 };
 
 /**
@@ -173,8 +119,13 @@ l.removeWorker = function (worker) {
     workers.splice(ind, 1);
 };
 
-l.addWriter = function(writerFn, maxLevel) {
-    writers.push(writeFn);
+l.addTransport = function(name, transportObj, maxLevel) {
+    transportObj.maxLevel = maxLevel || l.level;
+    l.writers[name] = transportObj;
+}
+
+l.removeTransport = function(name) {
+    delete l.writers[name];
 }
 
 //-- Benchmarks ------------------------------------------------------------------------------------------------------
@@ -222,8 +173,7 @@ l.B.stop = function (name, timeout) {
 
 function log(level, msg) {
     try {
-
-        if (level > l.level || writers.length === 0) return;
+        console.log('we logged')
         if (typeof(msg) === 'function') msg = msg();
 
         msg = stringify(msg);
@@ -235,8 +185,8 @@ function log(level, msg) {
 
         var entry = head + interpolate(msg, getArguments(arguments));
         l.rawWrite(entry, level);
-
     } catch (e) {
+        console.log('catch?', e)
         try {
             l.error(e);
         } catch (e) {

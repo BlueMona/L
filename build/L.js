@@ -1,0 +1,52 @@
+/**
+ *  L.js
+ *  ---------------------
+ *  Opinionated, unobtrusive yet powerful logging library originally made for Peerio apps (http://peerio.com).
+ *
+ *  Features:
+ *  - Logging
+ *  - Benchmarking
+ *  - String interpolation: log message may contain repeatable placeholders `{0}{1}{2}{1}`
+ *  - Logging code and calls can be completely wiped out in production builds with regex replace.
+ *
+ *  / Peerio / Anri Asaturov / 2015 /
+ */'use strict';var l={};l.Transport=require('./lib/transport');var CacheTransport=require('./lib/cache');var ConsoleTransport=require('./lib/console');//-- constants
+// log message levels
+l.LEVELS={ERROR:0,INFO:1,VERBOSE:2,SILLY:3};var levelNames=['ERR','INF','VER','SIL'];levelNames['-1']='BNC';var originalConsole,originalOnError,onErrorIsCaptured=false;//-- settings
+// current log level
+l.level=l.LEVELS.INFO;l.benchmarkEnabled=true;// by default benchmarks timeout after this number of seconds
+l.benchmarkTimeout=120;// registered web workers
+var workers=[];// benchmarks in progress
+var runningBenchmarks={};// todo remove console writer from release
+var writers={'console':new ConsoleTransport(),'cache':new CacheTransport()};l.error=log.bind(l,l.LEVELS.ERROR);l.info=log.bind(l,l.LEVELS.INFO);l.verbose=log.bind(l,l.LEVELS.VERBOSE);l.silly=log.bind(l,l.LEVELS.SILLY);/**
+ * Writes message without any pre-processing
+ * This is useful when writing pre-processed messages received from web worker
+ * @param msg
+ * @param [level]
+ */l.rawWrite=function(msg,level){Object.keys(writers).forEach(function(w){writers[k].write(msg,level);});};l.captureglobalErrors=function(){try{if(onErrorIsCaptured)return;onErrorIsCaptured=true;originalOnError=global.onerror;global.onerror=l.error;}catch(e){l.error(e);}};l.releaseglobalErrors=function(){try{if(!onErrorIsCaptured)return;onErrorIsCaptured=false;global.onerror=originalOnError;}catch(e){l.error(e);}};l.switchToWorkerMode=function(workerName){l.captureConsole();l.captureglobalErrors();l.workerName=workerName;l.cacheLimit=0;writers=[postToUIThread];};/**
+ * Updates L.js options with values provided in config object.
+ * This function is supposed to be used when running in web worker,
+ * so it ignores irrelevant options
+ * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
+ */l.setOptions=function(options){if(options.level)l.level=options.level;if(options.benchmarkEnabled)l.level=options.benchmarkEnabled;if(options.benchmarkTimeout)l.level=options.benchmarkTimeout;};l.setWorkersOptions=function(options){workers.forEach(function(w){w.postMessage(options);});};l.addWorker=function(worker){if(workers.indexOf(worker)>=0)return;workers.push(worker);};l.removeWorker=function(worker){var ind=workers.indexOf(worker);if(ind<0)return;workers.splice(ind,1);};l.addTransport=function(name,transportObj,maxLevel){transportObj.maxLevel=maxLevel||l.level;writers[name]=transportObj;};l.removeTransport=function(name){delete writers[name];};//-- Benchmarks ------------------------------------------------------------------------------------------------------
+l.B={};l.B.start=function(name,msg,timeout){try{if(!l.benchmarkEnabled)return;if(runningBenchmarks.hasOwnProperty(name)){l.error('Duplicate benchmark name');return;}runningBenchmarks[name]={ts:Date.now(),msg:msg,timeoutId:global.setTimeout(l.B.stop.bind(this,name,true),(timeout||l.benchmarkTimeout)*1000)};}catch(e){l.error(e);// yes, we are not interested in handling exception
+}};l.B.stop=function(name,timeout){try{if(!runningBenchmarks.hasOwnProperty(name)){l.error('Benchmark name {0} not found',name);return;}var b=runningBenchmarks[name];var time=Date.now()-b.ts;delete runningBenchmarks[name];log(-1,'{0}: {1} | {2} s.',name,timeout?'BENCHMARK TIMEOUT':b.msg||'',time/1000);global.clearTimeout(b.timeoutId);}catch(e){l.error(e);// yes, we are not interested in handling exception
+}};//-- Private -------------------------------------------------------------------------------------------------------
+function log(level,msg){try{if(typeof msg==='function')msg=msg();msg=stringify(msg);var head=l.workerName?interpolate('{0} {1}:{2} ',[getTimestamp(),levelNames[level],l.workerName]):interpolate('{0} {1}: ',[getTimestamp(),levelNames[level]]);var entry=head+interpolate(msg,getArguments(arguments));l.rawWrite(entry,level);}catch(e){try{l.error(e);}catch(e){// well.. we tried
+}}}// cache writer
+function addToCache(msg){l.cache.unshift(msg);if(l.cache.length>l.cacheLimit)l.cache.length=l.cacheLimit;}// worker mode writer
+function postToUIThread(msg,level){global.postMessage({ljsMessage:msg,level:level});}/**
+ * Extracts meaningful arguments from arguments object
+ * @param args
+ */function getArguments(args){if(args.length<=2)return null;// splice on arguments prevents js optimisation, so we do it a bit longer way
+var arg=[];for(var i=2;i<args.length;i++){arg.push(args[i]);}return arg;}/**
+ *  Interpolates string replacing placeholders with arguments
+ *  @param {string} str - template string with placeholders in format {0} {1} {2}
+ *                                   where number is argument array index.
+ *                                   Numbers also can be replaced with property names or argument object.
+ *  @param {Array | Object} args - argument array or object
+ *  @returns {string} interpolated string
+ */function interpolate(str,args){if(!args||!args.length)return str;return str.replace(/{([^{}]*)}/g,function(a,b){return stringify(args[b]);});}// Opinionated any-value to string converter
+function stringify(val){if(typeof val==='string')return val;if(val instanceof Error)return val.message+' '+val.stack;if(val instanceof Date)return val.toISOString();return JSON.stringify(val);}function getTimestamp(){var d=new Date();return pad(d.getDate())+'-'+pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())+':'+pad(d.getUTCSeconds())+'.'+pad2(d.getUTCMilliseconds());}// performance over fanciness
+function pad(n){var ret=n.toString();return ret.length===2?ret:'0'+ret;}// performance over fanciness
+function pad2(n){var ret=n.toString();return ret.length===3?ret:ret.length===2?'0'+ret:'00'+ret;}module.exports=l;
