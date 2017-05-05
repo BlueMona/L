@@ -41,7 +41,10 @@ l.benchmarkEnabled = true;
 // by default benchmarks timeout after this number of seconds
 l.benchmarkTimeout = 120;
 // default writers
-l.writers = { 'console': new ConsoleTransport(), 'cache': new CacheTransport() };
+l.writers = {
+    console: new ConsoleTransport(),
+    cache: new CacheTransport()
+};
 
 l.error = log.bind(l, l.LEVELS.ERROR);
 l.info = log.bind(l, l.LEVELS.INFO);
@@ -56,9 +59,8 @@ l.silly = log.bind(l, l.LEVELS.SILLY);
  */
 l.rawWrite = function (msg, level) {
     Object.keys(l.writers).forEach((k) => {
-        console.log('write to ', k)
-        l.writers[k].write(msg, level)
-    })    
+        l.writers[k].conditionalWrite(msg, level, l.level);
+    });
 };
 
 l.captureglobalErrors = function () {
@@ -120,7 +122,7 @@ l.removeWorker = function (worker) {
 };
 
 l.addTransport = function(name, transportObj, maxLevel) {
-    transportObj.maxLevel = maxLevel || l.level;
+    if (maxLevel) transportObj.level = maxLevel;
     l.writers[name] = transportObj;
 }
 
@@ -173,7 +175,6 @@ l.B.stop = function (name, timeout) {
 
 function log(level, msg) {
     try {
-        console.log('we logged')
         if (typeof(msg) === 'function') msg = msg();
 
         msg = stringify(msg);

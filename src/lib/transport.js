@@ -6,21 +6,25 @@ class Transport {
     }
 
     set level(l) {
+        if (!Number.isInteger(l)) throw new Error('level must be an integer');
         this.maxLevel = l;
     }
 
+    clearLevel() {
+        this.maxLevel = undefined;
+    }
+
     constructor(level) {
-        this.level = level || levels.numeric.INFO;
+        if (level) this.level = level;
     }
 
-    conditionalWrite(message, level) {
-        if (level > this.level) return;
-        write();
+    conditionalWrite(message, level, generalMaxLevel) {
+        console.log(`my level is ${this.level} and general level is ${generalMaxLevel}`)
+        if (level > (this.level === undefined ? generalMaxLevel : this.level)) return;
+        this.write(message);
     }
 
-    write() {
-
-    }
+    write() {}
 }
 
 module.exports = Transport;

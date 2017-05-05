@@ -7,8 +7,13 @@ class CacheTransport extends Transport {
     write(msg, level) {
         this.cache.unshift(msg);
 
-        if (this.cache.length > this.cacheLimit)
+        if (this.cache.length > this.cacheLimit) {
             this.cache.length = this.cacheLimit;
+        }
+    }
+
+    resetCache() {
+        this.cache = [];
     }
 }
 
