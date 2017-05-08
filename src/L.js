@@ -12,8 +12,8 @@
  *  / Peerio / Anri Asaturov / 2015 /
  */
 
-
 'use strict';
+
 const l = {};
 const levels = require('./lib/levels');
 const CacheTransport = require('./lib/cache');
@@ -29,9 +29,11 @@ const runningBenchmarks = {};
 
 // export
 l.Transport = require('./lib/transport');
+
 l.LEVELS = levels.numeric;
 
-var originalConsole, originalOnError, onErrorIsCaptured = false;
+let originalOnError;
+let onErrorIsCaptured = false;
 
 // -- default settings
 // current log level
@@ -57,13 +59,13 @@ l.silly = log.bind(l, l.LEVELS.SILLY);
  * @param msg
  * @param [level]
  */
-l.rawWrite = function (msg, level) {
+l.rawWrite = (msg, level) => {
     Object.keys(l.writers).forEach((k) => {
         l.writers[k].conditionalWrite(msg, level, l.level);
     });
 };
 
-l.captureglobalErrors = function () {
+l.captureGlobalErrors = () => {
     try {
         if (onErrorIsCaptured) return;
         onErrorIsCaptured = true;
@@ -74,7 +76,7 @@ l.captureglobalErrors = function () {
     }
 };
 
-l.releaseglobalErrors = function () {
+l.releaseglobalErrors = () => {
     try {
         if (!onErrorIsCaptured) return;
         onErrorIsCaptured = false;
@@ -84,7 +86,54 @@ l.releaseglobalErrors = function () {
     }
 };
 
-l.switchToWorkerMode = function (workerName) {
+
+/**
+ * Overrides console.log, console.error and console.warn.
+ * Reroutes overridden calls to self.
+ */
+l.captureConsole = () => {
+    try {
+        if (l.writers.console.originalConsole) return;
+
+        if (!global.console) global.console = {};
+
+        l.writers.console.originalConsole = {
+            log: global.console.log,
+            error: global.console.error,
+            warn: global.console.warn
+        };
+
+        global.console.log = global.console.warn = (...args) => {
+            for (let i = 0; i < args.length; i++) {
+                l.info(args[i]);
+            }
+        };
+        global.console.error = (...args) => {
+            for (let i = 0; i < args.length; i++) {
+                l.error(args[i]);
+            }
+        };
+    } catch (e) {
+        l.error(e);
+    }
+};
+
+/**
+ * Brings back console functions to the state they were before capturing
+ */
+l.releaseConsole = () => {
+    try {
+        if (!l.writers.console.originalConsole) return;
+        global.console.log = l.writers.console.originalConsole.log;
+        global.console.error = l.writers.console.originalConsole.error;
+        global.console.warn = l.writers.console.originalConsole.warn;
+        l.writers.console.originalConsole = null;
+    } catch (e) {
+        l.error(e);
+    }
+};
+
+l.switchToWorkerMode = (workerName) => {
     l.captureConsole();
     l.captureglobalErrors();
     l.workerName = workerName;

@@ -30,7 +30,7 @@ var ConsoleTransport = function (_Transport) {
             //     else
             //         originalConsole.log.call(root.console, msg);
             // } else {
-            if (level === levels.numeric.ERROR) root.console.error(msg);else root.console.log(msg);
+            if (level === levels.numeric.ERROR) global.console.error(msg);else global.console.log(msg);
             // }
         }
     }]);

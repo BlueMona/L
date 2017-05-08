@@ -120,100 +120,44 @@ describe('L', () => {
         }
     });
 
-    //   it('captures and releases console', function () {
-    //     L.level = L.LEVELS.SILLY;
-    //     L.cacheLimit = 10;
-    //     L.cache = [];
+    it('captures and releases console', () => {
+        L.level = L.LEVELS.SILLY;
+        L.writers.cache.cacheLimit = 10;
+        L.writers.cache.cache = [];
 
-    //     L.captureConsole();
+        L.captureConsole();
+        const msg = 'hola, hola. soy la consola.';
+        console.log(msg);
+        checkLastMessage(msg, L.LEVELS.INFO);
+        console.error(msg);
+        checkLastMessage(msg, L.LEVELS.ERROR);
+        console.warn(msg);
+        checkLastMessage(msg, L.LEVELS.INFO);
 
-    //     var msg = 'hola, hola. soy la consola.';
-    //     console.log(msg);
-    //     checkLastMessage(msg, L.LEVELS.INFO);
-    //     console.error(msg);
-    //     checkLastMessage(msg, L.LEVELS.ERROR);
-    //     console.warn(msg);
-    //     checkLastMessage(msg, L.LEVELS.INFO);
+        L.releaseConsole();
 
-    //     L.releaseConsole();
+        console.log(msg);
+        console.error(msg);
+        console.warn(msg);
 
-    //     console.log(msg);
-    //     console.error(msg);
-    //     console.warn(msg);
+        L.writers.cache.cache.length.should.equal(3);
+    });
 
-    //     expect(L.cache.length).toBe(3);
-    //   });
+    it('interpolates strings', () => {
+        L.writers.cache.cacheLimit = 10;
+        L.writers.cache.cache = [];
 
-    //   it('interpolates strings', function () {
-    //     L.cacheLimit = 10;
-    //     L.cache = [];
-    //     var cases = [
-    //       {args: ['{0}', 111], expected: '111'},
-    //       {args: ['{0}{1}{2}', 1, 1, 1], expected: '111'},
-    //       {args: ['interpolate {0} the {1}', 'all', 'things'], expected: 'interpolate all the things'},
-    //       {args: ['{2}{2}{0}{1}', 1, 2, 3], expected: '3312'}
-    //     ];
+        const cases = [
+            { args: ['{0}', 111], expected: '111' },
+            { args: ['{0}{1}{2}', 1, 1, 1], expected: '111' },
+            { args: ['interpolate {0} the {1}', 'all', 'things'], expected: 'interpolate all the things' },
+            { args: ['{2}{2}{0}{1}', 1, 2, 3], expected: '3312' }
+        ];
 
-    //     cases.forEach(function (c) {
-    //       L.error.apply(L, c.args);
-    //       checkLastMessage(c.expected, L.LEVELS.ERROR);
-    //     });
-    //   });
+        cases.forEach((c) => {
+            console.log('what')
+            L.error(...c.args);
+            checkLastMessage(c.expected, L.LEVELS.ERROR);
+        });
+    });
 });
-
-// describe('benchmarks', function () {
-
-//     beforeEach(function () {
-//       L.cacheLimit = 10;
-//       L.cache = [];
-//     });
-
-//     it('success with default timeout', function () {
-//       L.benchmarkTimeout = 3;
-//       L.B.start('default timeout success', 'benchmark');
-//       L.B.stop('default timeout success');
-//       expect(L.cache.length).toBe(1);
-//       expectBenchmarkSuccess();
-//     });
-
-//     it('success with specific timeout', function (done) {
-//       L.benchmarkTimeout = .1;
-//       L.B.start('specific timeout success', 'benchmark', 10);
-//       setTimeout(function () {
-//         L.B.stop('specific timeout success');
-//         expectBenchmarkSuccess();
-//         done();
-//       }, 150);
-//     });
-
-//     it('fail with default timeout', function (done) {
-//       L.benchmarkTimeout = .1;
-//       L.B.start('default timeout fail', 'benchmark');
-//       setTimeout(function () {
-//         expectBenchmarkTimeout();
-//         done();
-//       }, 100);
-//     });
-
-//     it('fail with specific timeout', function (done) {
-//       L.benchmarkTimeout = 10;
-//       L.B.start('specific timeout fail', 'benchmark', .1);
-//       setTimeout(function () {
-//         expectBenchmarkTimeout();
-//         done();
-//       }, 150);
-//     });
-
-//     var timeoutMsg = 'BENCHMARK TIMEOUT';
-
-//     function expectBenchmarkSuccess() {
-//       var res = L.cache[0].indexOf(timeoutMsg) < 0;
-//       expect(res).toBe(true);
-//  }
-
-//     function expectBenchmarkTimeout() {
-//       var res = L.cache[0].indexOf(timeoutMsg) > 0;
-//       expect(res).toBe(true);
-//     }
-
-//   });

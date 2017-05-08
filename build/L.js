@@ -29,11 +29,12 @@ var runningBenchmarks = {};
 
 // export
 l.Transport = require('./lib/transport');
+
 l.LEVELS = levels.numeric;
 
-var originalConsole,
-    originalOnError,
-    onErrorIsCaptured = false;
+var originalConsole = void 0;
+var originalOnError = void 0;
+var onErrorIsCaptured = false;
 
 // -- default settings
 // current log level
@@ -65,11 +66,13 @@ l.rawWrite = function (msg, level) {
     });
 };
 
-l.captureglobalErrors = function () {
+l.captureGlobalErrors = function () {
+    l.info('jksdhfkh');
     try {
         if (onErrorIsCaptured) return;
         onErrorIsCaptured = true;
         originalOnError = global.onerror;
+        l.info('------------- global error capture');
         global.onerror = l.error;
     } catch (e) {
         l.error(e);

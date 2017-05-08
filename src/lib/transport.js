@@ -19,7 +19,6 @@ class Transport {
     }
 
     conditionalWrite(message, level, generalMaxLevel) {
-        console.log(`my level is ${this.level} and general level is ${generalMaxLevel}`)
         if (level > (this.level === undefined ? generalMaxLevel : this.level)) return;
         this.write(message);
     }
