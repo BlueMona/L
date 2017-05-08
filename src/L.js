@@ -122,7 +122,7 @@ l.removeWorker = function (worker) {
 };
 
 l.addTransport = function(name, transportObj, maxLevel) {
-    if (maxLevel) transportObj.level = maxLevel;
+    if (maxLevel !== undefined) transportObj.level = maxLevel;
     l.writers[name] = transportObj;
 }
 
