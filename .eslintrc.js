@@ -12,5 +12,9 @@ module.exports = {
         'no-void': 0
     },
     globals: {
+        before: true,
+        beforeEach: true,
+        after: true,
+        afterEach: true
     }
 };
