@@ -18,6 +18,8 @@ const l = {};
 const levels = require('./lib/levels');
 const CacheTransport = require('./lib/cache');
 const ConsoleTransport = require('./lib/console');
+const cacheTransport = new CacheTransport();
+const consoleTransport = new ConsoleTransport();
 
 const levelNames = levels.names;
 levelNames['-1'] = 'BNC';
@@ -44,8 +46,8 @@ l.benchmarkEnabled = true;
 l.benchmarkTimeout = 120;
 // default writers
 l.writers = {
-    console: new ConsoleTransport(),
-    cache: new CacheTransport()
+    console: consoleTransport,
+    cache: cacheTransport
 };
 
 l.error = log.bind(l, l.LEVELS.ERROR);
@@ -67,9 +69,8 @@ l.rawWrite = (msg, level) => {
 
 //-- Capture global ------------------------------------------------------------------------------------------------------ 
 
-
 /**
- * 
+ * Capture global errors.
  */
 l.captureGlobalErrors = () => {
     try {
@@ -83,7 +84,7 @@ l.captureGlobalErrors = () => {
 };
 
 /**
- * 
+ * Stop capturing global errors. 
  */
 l.releaseglobalErrors = () => {
     try {
@@ -95,7 +96,6 @@ l.releaseglobalErrors = () => {
     }
 };
 
-
 /**
  * Overrides console.log, console.error and console.warn.
  * Reroutes overridden calls to self.
@@ -103,11 +103,11 @@ l.releaseglobalErrors = () => {
  */
 l.captureConsole = () => {
     try {
-        if (l.writers.console.originalConsole) return;
+        if (consoleTransport.originalConsole) return;
 
         if (!global.console) global.console = {};
 
-        l.writers.console.originalConsole = {
+        consoleTransport.originalConsole = {
             log: global.console.log,
             error: global.console.error,
             warn: global.console.warn
@@ -133,11 +133,11 @@ l.captureConsole = () => {
  */
 l.releaseConsole = () => {
     try {
-        if (!l.writers.console.originalConsole) return;
-        global.console.log = l.writers.console.originalConsole.log;
-        global.console.error = l.writers.console.originalConsole.error;
-        global.console.warn = l.writers.console.originalConsole.warn;
-        l.writers.console.originalConsole = null;
+        if (!consoleTransport.originalConsole) return;
+        global.console.log = consoleTransport.originalConsole.log;
+        global.console.error = consoleTransport.originalConsole.error;
+        global.console.warn = consoleTransport.originalConsole.warn;
+        consoleTransport.originalConsole = null;
     } catch (e) {
         l.error(e);
     }
@@ -145,7 +145,9 @@ l.releaseConsole = () => {
 
 //-- Worker mode ------------------------------------------------------------------------------------------------------ 
 
-
+/**
+ * Discard workers and just post to UI thread. 
+ */
 l.switchToWorkerMode = (workerName) => {
     l.captureConsole();
     l.captureglobalErrors();
@@ -210,7 +212,7 @@ l.removeTransport = function(name) {
 
 l.B = {};
 
-l.B.start = function (name, msg, timeout) {
+l.B.start = (name, msg, timeout) => {
     try {
         if (!l.benchmarkEnabled) return;
 
@@ -221,7 +223,7 @@ l.B.start = function (name, msg, timeout) {
 
         runningBenchmarks[name] = {
             ts: Date.now(),
-            msg: msg,
+            msg,
             timeoutId: global.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
         };
     } catch (e) {
@@ -230,14 +232,14 @@ l.B.start = function (name, msg, timeout) {
     }
 };
 
-l.B.stop = function (name, timeout) {
+l.B.stop = (name, timeout) => {
     try {
         if (!runningBenchmarks.hasOwnProperty(name)) {
             l.error('Benchmark name {0} not found', name);
             return;
         }
-        var b = runningBenchmarks[name];
-        var time = Date.now() - b.ts;
+        const b = runningBenchmarks[name];
+        const time = Date.now() - b.ts;
         delete runningBenchmarks[name];
         log(-1, '{0}: {1} | {2} s.', name, timeout ? 'BENCHMARK TIMEOUT' : b.msg || '', time / 1000);
         global.clearTimeout(b.timeoutId);
@@ -252,7 +254,7 @@ l.B.stop = function (name, timeout) {
 function log(level, msgArg) {
     let msg = msgArg;
     try {
-        if (typeof ms) === 'function') msg = msg();
+        if (typeof ms === 'function') msg = msg();
 
         msg = stringify(msg);
 
@@ -264,7 +266,6 @@ function log(level, msgArg) {
         const entry = head + interpolate(msg, getArguments(arguments));
         l.rawWrite(entry, level);
     } catch (e) {
-        console.log('catch?', e)
         try {
             l.error(e);
         } catch (e) {
@@ -275,7 +276,7 @@ function log(level, msgArg) {
 
 // worker mode writer
 function postToUIThread(msg, level) {
-    global.postMessage({ljsMessage: msg, level: level});
+    global.postMessage({ljsMessage: msg, level });
 }
 
 /**
@@ -286,8 +287,8 @@ function getArguments(args) {
     if (args.length <= 2) return null;
 
     // splice on arguments prevents js optimisation, so we do it a bit longer way
-    var arg = [];
-    for (var i = 2; i < args.length; i++)
+    const arg = [];
+    for (let i = 2; i < args.length; i++)
         arg.push(args[i]);
 
     return arg;
@@ -305,7 +306,7 @@ function interpolate(str, args) {
     if (!args || !args.length) return str;
 
     return str.replace(/{([^{}]*)}/g,
-        function (a, b) {
+        (a, b) => {
             return stringify(args[b]);
         }
     );
