@@ -2,7 +2,6 @@ const L = require('../src/L');
 const sinon = require('sinon');
 
 describe('benchmarks', () => {
-
     beforeEach(() => {
         L.writers.cache.cacheLimit = 10;
         L.writers.cache.cache = [];
@@ -19,7 +18,7 @@ describe('benchmarks', () => {
     it('success with specific timeout', (done) => {
         L.benchmarkTimeout = 0.1;
         L.B.start('specific timeout success', 'benchmark', 10);
-        setTimeout(() =>  {
+        setTimeout(() => {
             L.B.stop('specific timeout success');
             expectBenchmarkSuccess();
             done();
@@ -29,7 +28,7 @@ describe('benchmarks', () => {
     it('fail with default timeout', (done) => {
         L.benchmarkTimeout = 0.1;
         L.B.start('default timeout fail', 'benchmark');
-        setTimeout(() =>  {
+        setTimeout(() => {
             expectBenchmarkTimeout();
             done();
         }, 100);
@@ -55,5 +54,4 @@ describe('benchmarks', () => {
         const res = L.writers.cache.cache[0].indexOf(timeoutMsg) > 0;
         res.should.equal(true);
     }
-
 });

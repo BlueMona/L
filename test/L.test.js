@@ -22,7 +22,7 @@ describe('L', () => {
     // checks if last log message is the one that is expected,
     // while taking output format into account.
     function checkLastMessage(message, level) {
-        const logEntry = L.writers.cache.cache[0].substr(-message.length - 5)
+        const logEntry = L.writers.cache.cache[0].substr(-message.length - 5);
         logEntry.should.equal(levels[level].abbr + message);
     }
 
@@ -34,7 +34,7 @@ describe('L', () => {
             const msg = `test ${level.fn}`;
             // logging a message
             L[level.fn](msg);
-            console.log('cache', L.writers.cache.cache)
+            console.log('cache', L.writers.cache.cache);
             checkLastMessage(msg, level.level);
         });
     });
@@ -155,7 +155,7 @@ describe('L', () => {
         ];
 
         cases.forEach((c) => {
-            console.log('what')
+            console.log('what');
             L.error(...c.args);
             checkLastMessage(c.expected, L.LEVELS.ERROR);
         });

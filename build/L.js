@@ -1,3 +1,5 @@
+'use strict';
+
 /**
  *  L.js
  *  ---------------------
@@ -12,12 +14,12 @@
  *  / Peerio / Anri Asaturov / 2015 /
  */
 
-'use strict';
-
 var l = {};
 var levels = require('./lib/levels');
 var CacheTransport = require('./lib/cache');
 var ConsoleTransport = require('./lib/console');
+var cacheTransport = new CacheTransport();
+var consoleTransport = new ConsoleTransport();
 
 var levelNames = levels.names;
 levelNames['-1'] = 'BNC';
@@ -32,7 +34,6 @@ l.Transport = require('./lib/transport');
 
 l.LEVELS = levels.numeric;
 
-var originalConsole = void 0;
 var originalOnError = void 0;
 var onErrorIsCaptured = false;
 
@@ -45,8 +46,8 @@ l.benchmarkEnabled = true;
 l.benchmarkTimeout = 120;
 // default writers
 l.writers = {
-    console: new ConsoleTransport(),
-    cache: new CacheTransport()
+    console: consoleTransport,
+    cache: cacheTransport
 };
 
 l.error = log.bind(l, l.LEVELS.ERROR);
@@ -66,19 +67,25 @@ l.rawWrite = function (msg, level) {
     });
 };
 
+// -- Capture global ------------------------------------------------------------------------------------------------------
+
+/**
+ * Capture global errors.
+ */
 l.captureGlobalErrors = function () {
-    l.info('jksdhfkh');
     try {
         if (onErrorIsCaptured) return;
         onErrorIsCaptured = true;
         originalOnError = global.onerror;
-        l.info('------------- global error capture');
         global.onerror = l.error;
     } catch (e) {
         l.error(e);
     }
 };
 
+/**
+ * Stop capturing global errors.
+ */
 l.releaseglobalErrors = function () {
     try {
         if (!onErrorIsCaptured) return;
@@ -89,6 +96,66 @@ l.releaseglobalErrors = function () {
     }
 };
 
+/**
+ * Overrides console.log, console.error and console.warn.
+ * Reroutes overridden calls to self.
+ * @param {String} workerName
+ */
+l.captureConsole = function () {
+    try {
+        if (consoleTransport.originalConsole) return;
+
+        if (!global.console) global.console = {};
+
+        consoleTransport.originalConsole = {
+            log: global.console.log,
+            error: global.console.error,
+            warn: global.console.warn
+        };
+
+        global.console.log = global.console.warn = function () {
+            for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+                args[_key] = arguments[_key];
+            }
+
+            for (var i = 0; i < args.length; i++) {
+                l.info(args[i]);
+            }
+        };
+        global.console.error = function () {
+            for (var _len2 = arguments.length, args = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+                args[_key2] = arguments[_key2];
+            }
+
+            for (var i = 0; i < args.length; i++) {
+                l.error(args[i]);
+            }
+        };
+    } catch (e) {
+        l.error(e);
+    }
+};
+
+/**
+ * Brings back console functions to the state they were before capturing
+ */
+l.releaseConsole = function () {
+    try {
+        if (!consoleTransport.originalConsole) return;
+        global.console.log = consoleTransport.originalConsole.log;
+        global.console.error = consoleTransport.originalConsole.error;
+        global.console.warn = consoleTransport.originalConsole.warn;
+        consoleTransport.originalConsole = null;
+    } catch (e) {
+        l.error(e);
+    }
+};
+
+// -- Worker mode ------------------------------------------------------------------------------------------------------
+
+/**
+ * Discard workers and just post to UI thread.
+ */
 l.switchToWorkerMode = function (workerName) {
     l.captureConsole();
     l.captureglobalErrors();
@@ -126,16 +193,30 @@ l.removeWorker = function (worker) {
     workers.splice(ind, 1);
 };
 
-l.addTransport = function (name, transportObj, maxLevel) {
-    if (maxLevel !== undefined) transportObj.level = maxLevel;
-    l.writers[name] = transportObj;
+// -- Transports ------------------------------------------------------------------------------------------------------
+
+/**
+ * Add a transport with a max log level that will be written to it.
+ *
+ * @param {String} name
+ * @param {Transport} transport
+ * @param {Number} maxLevel
+ */
+l.addTransport = function (name, transport, maxLevel) {
+    if (maxLevel !== undefined) transport.level = maxLevel;
+    l.writers[name] = transport;
 };
 
+/**
+ * Remove a transport by name.
+ *
+ * @param {String} name
+ */
 l.removeTransport = function (name) {
     delete l.writers[name];
 };
 
-//-- Benchmarks ------------------------------------------------------------------------------------------------------
+// -- Benchmarks ------------------------------------------------------------------------------------------------------
 
 l.B = {};
 
@@ -151,7 +232,7 @@ l.B.start = function (name, msg, timeout) {
         runningBenchmarks[name] = {
             ts: Date.now(),
             msg: msg,
-            timeoutId: global.setTimeout(l.B.stop.bind(this, name, true), (timeout || l.benchmarkTimeout) * 1000)
+            timeoutId: global.setTimeout(l.B.stop.bind(undefined, name, true), (timeout || l.benchmarkTimeout) * 1000)
         };
     } catch (e) {
         l.error(e);
@@ -176,11 +257,12 @@ l.B.stop = function (name, timeout) {
     }
 };
 
-//-- Private -------------------------------------------------------------------------------------------------------
+// -- Private -------------------------------------------------------------------------------------------------------
 
-function log(level, msg) {
+function log(level, msgArg) {
+    var msg = msgArg;
     try {
-        if (typeof msg === 'function') msg = msg();
+        if (typeof ms === 'function') msg = msg();
 
         msg = stringify(msg);
 
@@ -189,20 +271,12 @@ function log(level, msg) {
         var entry = head + interpolate(msg, getArguments(arguments));
         l.rawWrite(entry, level);
     } catch (e) {
-        console.log('catch?', e);
         try {
             l.error(e);
         } catch (e) {
             // well.. we tried
         }
     }
-}
-
-// cache writer
-function addToCache(msg) {
-    l.cache.unshift(msg);
-
-    if (l.cache.length > l.cacheLimit) l.cache.length = l.cacheLimit;
 }
 
 // worker mode writer
@@ -221,7 +295,9 @@ function getArguments(args) {
     var arg = [];
     for (var i = 2; i < args.length; i++) {
         arg.push(args[i]);
-    }return arg;
+    }
+
+    return arg;
 }
 
 /**
@@ -244,9 +320,13 @@ function interpolate(str, args) {
 function stringify(val) {
     if (typeof val === 'string') return val;
 
-    if (val instanceof Error) return val.message + ' ' + val.stack;
+    if (val instanceof Error) {
+        return val.message + ' ' + val.stack;
+    }
 
-    if (val instanceof Date) return val.toISOString();
+    if (val instanceof Date) {
+        return val.toISOString();
+    }
 
     return JSON.stringify(val);
 }

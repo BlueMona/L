@@ -15,71 +15,38 @@ var ConsoleTransport = function (_Transport) {
     _inherits(ConsoleTransport, _Transport);
 
     function ConsoleTransport() {
+        var _ref;
+
+        var _temp, _this, _ret;
+
         _classCallCheck(this, ConsoleTransport);
 
-        return _possibleConstructorReturn(this, (ConsoleTransport.__proto__ || Object.getPrototypeOf(ConsoleTransport)).apply(this, arguments));
+        for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+            args[_key] = arguments[_key];
+        }
+
+        return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_ref = ConsoleTransport.__proto__ || Object.getPrototypeOf(ConsoleTransport)).call.apply(_ref, [this].concat(args))), _this), _this.originalConsole = null, _temp), _possibleConstructorReturn(_this, _ret);
     }
 
     _createClass(ConsoleTransport, [{
         key: 'write',
         value: function write(msg, level) {
             if (msg == null) msg = 'null';
-            // if (originalConsole) {
-            //     if (level === l.LEVELS.ERROR)
-            //         originalConsole.error.call(root.console, msg);
-            //     else
-            //         originalConsole.log.call(root.console, msg);
-            // } else {
-            if (level === levels.numeric.ERROR) global.console.error(msg);else global.console.log(msg);
-            // }
+            if (this.originalConsole) {
+                if (level === levels.numeric.ERROR) {
+                    this.originalConsole.error.call(global.console, msg);
+                } else {
+                    this.originalConsole.log.call(global.console, msg);
+                }
+            } else if (level === levels.numeric.ERROR) {
+                global.console.error(msg);
+            } else {
+                global.console.log(msg);
+            }
         }
     }]);
 
     return ConsoleTransport;
 }(Transport);
-
-// /**
-//  * Overrides console.log, console.error and console.warn.
-//  * Reroutes overridden calls to self.
-//  */
-// l.captureConsole = function () {
-//     try {
-//         if (originalConsole) return;
-
-//         if (!global.console) global.console = {};
-
-//         originalConsole = {
-//             log: global.console.log,
-//             error: global.console.error,
-//             warn: global.console.warn
-//         };
-
-//         global.console.log = global.console.warn = function () {
-//             for (var i = 0; i < arguments.length; i++)
-//                 l.info(arguments[i]);
-//         };
-//         global.console.error = function () {
-//             for (var i = 0; i < arguments.length; i++)
-//                 l.error(arguments[i]);
-//         };
-//     } catch (e) {
-//         l.error(e);
-//     }
-// };
-
-// /**
-//  * Brings back console functions to the state they were before capturing
-//  */
-// l.releaseConsole = function () {
-//     try {
-//         if (!originalConsole) return;
-//         global.console.log = originalConsole.log;
-//         global.console.error = originalConsole.error;
-//         global.console.warn = originalConsole.warn;
-//         originalConsole = null;
-//     } catch (e) {
-//         l.error(e);
-//     }
-// };
 
 module.exports = ConsoleTransport;

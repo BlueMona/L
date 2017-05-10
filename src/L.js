@@ -12,7 +12,6 @@
  *  / Peerio / Anri Asaturov / 2015 /
  */
 
-'use strict';
 
 const l = {};
 const levels = require('./lib/levels');
@@ -67,7 +66,7 @@ l.rawWrite = (msg, level) => {
     });
 };
 
-//-- Capture global ------------------------------------------------------------------------------------------------------ 
+// -- Capture global ------------------------------------------------------------------------------------------------------
 
 /**
  * Capture global errors.
@@ -84,7 +83,7 @@ l.captureGlobalErrors = () => {
 };
 
 /**
- * Stop capturing global errors. 
+ * Stop capturing global errors.
  */
 l.releaseglobalErrors = () => {
     try {
@@ -143,10 +142,10 @@ l.releaseConsole = () => {
     }
 };
 
-//-- Worker mode ------------------------------------------------------------------------------------------------------ 
+// -- Worker mode ------------------------------------------------------------------------------------------------------
 
 /**
- * Discard workers and just post to UI thread. 
+ * Discard workers and just post to UI thread.
  */
 l.switchToWorkerMode = (workerName) => {
     l.captureConsole();
@@ -162,7 +161,7 @@ l.switchToWorkerMode = (workerName) => {
  * so it ignores irrelevant options
  * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
  */
-l.setOptions =  (options) => {
+l.setOptions = (options) => {
     if (options.level) l.level = options.level;
     if (options.benchmarkEnabled) l.level = options.benchmarkEnabled;
     if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
@@ -188,8 +187,8 @@ l.removeWorker = (worker) => {
 // -- Transports ------------------------------------------------------------------------------------------------------
 
 /**
- * Add a transport with a max log level that will be written to it. 
- * 
+ * Add a transport with a max log level that will be written to it.
+ *
  * @param {String} name
  * @param {Transport} transport
  * @param {Number} maxLevel
@@ -200,15 +199,15 @@ l.addTransport = (name, transport, maxLevel) => {
 };
 
 /**
- * Remove a transport by name. 
- * 
+ * Remove a transport by name.
+ *
  * @param {String} name
  */
 l.removeTransport = function(name) {
     delete l.writers[name];
 };
 
-//-- Benchmarks ------------------------------------------------------------------------------------------------------
+// -- Benchmarks ------------------------------------------------------------------------------------------------------
 
 l.B = {};
 
@@ -249,7 +248,7 @@ l.B.stop = (name, timeout) => {
     }
 };
 
-//-- Private -------------------------------------------------------------------------------------------------------
+// -- Private -------------------------------------------------------------------------------------------------------
 
 function log(level, msgArg) {
     let msg = msgArg;
@@ -276,7 +275,7 @@ function log(level, msgArg) {
 
 // worker mode writer
 function postToUIThread(msg, level) {
-    global.postMessage({ljsMessage: msg, level });
+    global.postMessage({ ljsMessage: msg, level });
 }
 
 /**
@@ -288,8 +287,7 @@ function getArguments(args) {
 
     // splice on arguments prevents js optimisation, so we do it a bit longer way
     const arg = [];
-    for (let i = 2; i < args.length; i++)
-        arg.push(args[i]);
+    for (let i = 2; i < args.length; i++) { arg.push(args[i]); }
 
     return arg;
 }
@@ -314,34 +312,32 @@ function interpolate(str, args) {
 
 // Opinionated any-value to string converter
 function stringify(val) {
-    if (typeof(val) === 'string') return val;
+    if (typeof (val) === 'string') return val;
 
-    if (val instanceof Error)
-        return val.message + ' ' + val.stack;
+    if (val instanceof Error) { return `${val.message} ${val.stack}`; }
 
-    if (val instanceof Date)
-        return val.toISOString();
+    if (val instanceof Date) { return val.toISOString(); }
 
     return JSON.stringify(val);
 }
 
 function getTimestamp() {
-    var d = new Date();
-    return pad(d.getDate())
-        + '-' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ':' + pad(d.getUTCSeconds())
-        + '.' + pad2(d.getUTCMilliseconds());
+    const d = new Date();
+    return `${pad(d.getDate())
+         }-${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())
+         }.${pad2(d.getUTCMilliseconds())}`;
 }
 
 // performance over fanciness
 function pad(n) {
-    var ret = n.toString();
-    return ret.length === 2 ? ret : ('0' + ret);
+    const ret = n.toString();
+    return ret.length === 2 ? ret : (`0${ret}`);
 }
 
 // performance over fanciness
 function pad2(n) {
-    var ret = n.toString();
-    return ret.length === 3 ? ret : ( ret.length === 2 ? ('0' + ret) : ('00' + ret));
+    const ret = n.toString();
+    return ret.length === 3 ? ret : (ret.length === 2 ? (`0${ret}`) : (`00${ret}`));
 }
 
 module.exports = l;

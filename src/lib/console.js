@@ -7,16 +7,8 @@ class ConsoleTransport extends Transport {
     write(msg, level) {
         if (msg == null) msg = 'null';
         if (this.originalConsole) {
-            if (level === levels.numeric.ERROR)
-                this.originalConsole.error.call(global.console, msg);
-            else
-                this.originalConsole.log.call(global.console, msg);
-        } else {
-            if (level === levels.numeric.ERROR)
-                global.console.error(msg);
-            else
-                global.console.log(msg);
-        }
+            if (level === levels.numeric.ERROR) { this.originalConsole.error.call(global.console, msg); } else { this.originalConsole.log.call(global.console, msg); }
+        } else if (level === levels.numeric.ERROR) { global.console.error(msg); } else { global.console.log(msg); }
     }
 }
 
