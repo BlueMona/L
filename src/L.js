@@ -65,6 +65,12 @@ l.rawWrite = (msg, level) => {
     });
 };
 
+//-- Capture global ------------------------------------------------------------------------------------------------------ 
+
+
+/**
+ * 
+ */
 l.captureGlobalErrors = () => {
     try {
         if (onErrorIsCaptured) return;
@@ -76,6 +82,9 @@ l.captureGlobalErrors = () => {
     }
 };
 
+/**
+ * 
+ */
 l.releaseglobalErrors = () => {
     try {
         if (!onErrorIsCaptured) return;
@@ -90,6 +99,7 @@ l.releaseglobalErrors = () => {
 /**
  * Overrides console.log, console.error and console.warn.
  * Reroutes overridden calls to self.
+ * @param {String} workerName
  */
 l.captureConsole = () => {
     try {
@@ -133,6 +143,9 @@ l.releaseConsole = () => {
     }
 };
 
+//-- Worker mode ------------------------------------------------------------------------------------------------------ 
+
+
 l.switchToWorkerMode = (workerName) => {
     l.captureConsole();
     l.captureglobalErrors();
@@ -147,37 +160,51 @@ l.switchToWorkerMode = (workerName) => {
  * so it ignores irrelevant options
  * @param options {{level: Number, benchmarkEnabled: Boolean, benchmarkTimeout: Number}}
  */
-l.setOptions = function (options) {
+l.setOptions =  (options) => {
     if (options.level) l.level = options.level;
     if (options.benchmarkEnabled) l.level = options.benchmarkEnabled;
     if (options.benchmarkTimeout) l.level = options.benchmarkTimeout;
 };
 
-l.setWorkersOptions = function (options) {
-    workers.forEach(function (w) {
+l.setWorkersOptions = (options) => {
+    workers.forEach((w) => {
         w.postMessage(options);
     });
 };
 
-l.addWorker = function (worker) {
+l.addWorker = (worker) => {
     if (workers.indexOf(worker) >= 0) return;
     workers.push(worker);
 };
 
-l.removeWorker = function (worker) {
-    var ind = workers.indexOf(worker);
+l.removeWorker = (worker) => {
+    const ind = workers.indexOf(worker);
     if (ind < 0) return;
     workers.splice(ind, 1);
 };
 
-l.addTransport = function(name, transportObj, maxLevel) {
-    if (maxLevel !== undefined) transportObj.level = maxLevel;
-    l.writers[name] = transportObj;
-}
+// -- Transports ------------------------------------------------------------------------------------------------------
 
+/**
+ * Add a transport with a max log level that will be written to it. 
+ * 
+ * @param {String} name
+ * @param {Transport} transport
+ * @param {Number} maxLevel
+ */
+l.addTransport = (name, transport, maxLevel) => {
+    if (maxLevel !== undefined) transport.level = maxLevel;
+    l.writers[name] = transport;
+};
+
+/**
+ * Remove a transport by name. 
+ * 
+ * @param {String} name
+ */
 l.removeTransport = function(name) {
     delete l.writers[name];
-}
+};
 
 //-- Benchmarks ------------------------------------------------------------------------------------------------------
 
@@ -222,18 +249,19 @@ l.B.stop = function (name, timeout) {
 
 //-- Private -------------------------------------------------------------------------------------------------------
 
-function log(level, msg) {
+function log(level, msgArg) {
+    let msg = msgArg;
     try {
-        if (typeof(msg) === 'function') msg = msg();
+        if (typeof ms) === 'function') msg = msg();
 
         msg = stringify(msg);
 
-        var head =
+        const head =
             l.workerName
                 ? interpolate('{0} {1}:{2} ', [getTimestamp(), levelNames[level], l.workerName])
                 : interpolate('{0} {1}: ', [getTimestamp(), levelNames[level]]);
 
-        var entry = head + interpolate(msg, getArguments(arguments));
+        const entry = head + interpolate(msg, getArguments(arguments));
         l.rawWrite(entry, level);
     } catch (e) {
         console.log('catch?', e)
@@ -243,14 +271,6 @@ function log(level, msg) {
             // well.. we tried
         }
     }
-}
-
-// cache writer
-function addToCache(msg) {
-    l.cache.unshift(msg);
-
-    if (l.cache.length > l.cacheLimit)
-        l.cache.length = l.cacheLimit;
 }
 
 // worker mode writer
