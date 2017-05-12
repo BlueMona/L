@@ -1,15 +1,8 @@
-const L = require('../src/L');
 const sinon = require('sinon');
+let L;
 
 describe('L', () => {
-    it('has levels', () => {
-        L.LEVELS.should.be.an('Object');
-    });
-
-    it('has default writers', () => {
-        L.writers.cache.should.be.an('Object');
-        L.writers.console.should.be.an('Object');
-    });
+    L = require('../src/L');
 
     // assumes levels have values according to index 0-3,
     const levels = [
@@ -18,6 +11,15 @@ describe('L', () => {
         { level: L.LEVELS.VERBOSE, fn: 'verbose', abbr: 'VER: ' },
         { level: L.LEVELS.SILLY, fn: 'silly', abbr: 'SIL: ' }
     ];
+
+    it('has levels', () => {
+        L.LEVELS.should.be.an('Object');
+    });
+
+    it('has default writers', () => {
+        L.writers.cache.should.be.an('Object');
+        L.writers.console.should.be.an('Object');
+    });
 
     // checks if last log message is the one that is expected,
     // while taking output format into account.
