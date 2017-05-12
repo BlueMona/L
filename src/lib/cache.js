@@ -1,8 +1,12 @@
 const Transport = require('./transport');
 
 class CacheTransport extends Transport {
-    cache = [];
-    cacheLimit = 1000; // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
+
+    constructor(level) {
+        super(level);
+        this.cache = [];
+        this.cacheLimit = 1000; // amount of log entries to keep in FIFO L.cache queue. Set to 0 to disable.
+    }
 
     write(msg, level) {
         this.cache.unshift(msg);

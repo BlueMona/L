@@ -2,7 +2,11 @@ const Transport = require('./transport');
 const levels = require('./levels');
 
 class ConsoleTransport extends Transport {
-    originalConsole = null;
+
+     constructor(level) {
+        super(level);
+        this.originalConsole = null;
+     }
 
     write(msg, level) {
         if (msg == null) msg = 'null';
