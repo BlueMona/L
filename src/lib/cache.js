@@ -20,7 +20,7 @@ class CacheTransport extends Transport {
         this.cache = [];
     }
 
-    printCache() {
+    print() {
         return this.cache.join('\n');
     }
 }
