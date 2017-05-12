@@ -19,6 +19,10 @@ class CacheTransport extends Transport {
     resetCache() {
         this.cache = [];
     }
+
+    printCache() {
+        return this.cache.join('\n');
+    }
 }
 
 module.exports = CacheTransport;
