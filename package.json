@@ -2,7 +2,7 @@
   "name": "l.js",
   "version": "1.0.0",
   "description": "Unobtrusive yet powerful logging library originally made for Peerio apps",
-  "main": "build/L.js",
+  "main": "src/L.js",
   "scripts": {
     "start": "npm run test -- -w",
     "test": "mocha test/*.test.js --require test/global-setup --compilers js:babel-core/register --recursive",
